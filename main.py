@@ -12,9 +12,10 @@ sutime = SUTime(jars=jar_files, mark_time_ranges=True)
 
 keywords=["exam", "assignment", "hw", "homework1", "homework","homework2", "homework3" "midterm", "assign ","quiz","ment", "test", "home", "work", "essay", "finalessay", "essay3", "essay1", "assignment_1","assignment_2", "assignment_3", "assignment_4", "midterm2", "finals", "essay1", "essay4", "mid-term", "final"]
 
+# User can enter input by 2 ways: (1) specifying pdf path or (2) directly entering texts including schedules
+# (1) import text from pdf
 def pdf_to_text():
-    # fileName=input("Enter your file name: ")
-    fileName="example2.pdf" # test
+    fileName=input("Enter your file name: ")
     pdfObject = open(os.path.join(os.path.dirname(__file__), fileName), 'rb')
     pdfReader = PyPDF2.PdfFileReader(pdfObject)
     pgnum=pdfReader.numPages
@@ -26,6 +27,11 @@ def pdf_to_text():
 
     pdfObject.close()
     return s
+
+# (2) get user input
+def get_user_input():
+    string = input("Enter your text: ")
+    return string
 
 def find_event(d, string):
     index_range = 16 # custom value
@@ -39,7 +45,37 @@ def find_event(d, string):
         close_match = difflib.get_close_matches(k, string_list, n=1, cutoff=0.1)
     d["event"] = close_match[0] # we can now add the closes matching event to the dictionary
 
+def find_dates(string):
+    sutime = SUTime(mark_time_ranges=True, include_range=True)
+    dates = sutime.parse(string)
 
+    for d in dates: # loop through detected dates
+        if d["type"] == "DATE": 
+            d["value"] = datetime.datetime.strptime(d["value"], "%Y-%m-%d").strftime('%m/%d/%y') # change date format for google cal export
+            find_event(d, string) # call find_event function to add event name to the dict 
+
+    # alternative library
+    # p = parsedatetime.Calendar()
+    # d = p.parse(string)
+    # print(d)
+
+    return dates
+
+def write_calendar_csv(events):
+    with open(os.path.join(os.path.dirname(__file__), 'calendar.csv'), mode='w', newline='') as calendar_csv:
+
+        # write header
+        fieldnames = ['Subject', 'Start Date', 'Start Time', 'End Date', 'End Time', 'All Day Event', 'Description', 'Location', 'Private']
+        calendar_writer = csv.DictWriter(calendar_csv, fieldnames=fieldnames)
+
+        calendar_writer.writeheader()
+        for e in events:
+            if e["type"] == "DATE":
+                calendar_writer.writerow({'Subject': e['event'], 'Start Date': e["value"], 'End Date': e["value"], 'All Day Event': True})
+
+    calendar_csv.close()
+
+# sample string
 s = """Quizzes
 10%
 -
@@ -72,59 +108,8 @@ Final exam
 Final’s week
 -"""
 
-s2 = """
-6/9 Basics of internet architecture and key internet technologies
-8/9 Internet governance
-13/9 The threat landscape
-15/9 The human factor: Trust and deception
-20/9 White hat hacking & basic examples of exploits
-22/9 Hacking ethics
-27/9 Critical infrastructure
-29/9 Case study: Power grid cyberattack
-4/10 Internet-of-Things / Botnets
-6/10 Shodan tutorial
-11/10 Fundamentals of information and computer security
-13/10 Fundamentals of cryptography
-SPRING BREAK
-25/10 Student presentations (Assignment 3) 27/10 Attack trees, Querying and analyzing data 1/11 Cyber tabletop exercise 1
-3/11 Introduction to Tor - Dark web
-8/11 Attribution: Legal issues on cyberspace 10/11 Cyberterrorism
-15/11 The political war on encryption
-Assignments
-Assignment 1
-"""
-
-def find_dates(string):
-    sutime = SUTime(mark_time_ranges=True, include_range=True)
-    dates = sutime.parse(string)
-
-    for d in dates: # loop through detected dates
-        if d["type"] == "DATE": 
-            d["value"] = datetime.datetime.strptime(d["value"], "%Y-%m-%d").strftime('%m/%d/%y') # change date format for google cal export
-            find_event(d, string) # call find_event function to add event name to the dict 
-
-    # alternative library
-    # p = parsedatetime.Calendar()
-    # d = p.parse(string)
-    # print(d)
-
-    return dates
-
-def write_calendar_csv(events):
-    with open(os.path.join(os.path.dirname(__file__), 'calendar.csv'), mode='w', newline='') as calendar_csv:
-
-        # write header
-        fieldnames = ['Subject', 'Start Date', 'Start Time', 'End Date', 'End Time', 'All Day Event', 'Description', 'Location', 'Private']
-        calendar_writer = csv.DictWriter(calendar_csv, fieldnames=fieldnames)
-
-        calendar_writer.writeheader()
-        for e in events:
-            if e["type"] == "DATE":
-                calendar_writer.writerow({'Subject': e['event'], 'Start Date': e["value"], 'End Date': e["value"], 'All Day Event': True})
-
-    calendar_csv.close()
-
+## MAIN LOGIC
 # s = pdf_to_text()
+# s = get_user_input()
 events = find_dates(s)
-print(events)
 write_calendar_csv(events)
