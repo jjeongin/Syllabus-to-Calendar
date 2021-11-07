@@ -30,8 +30,24 @@ def pdf_to_text():
 
 # (2) get user input
 def get_user_input():
-    string = input("Enter your text: ")
-    return string
+    print("""        
+/ _\_   _| | | __ _| |__  _   _ ___  | |_ ___     / __\__ _| | ___ _ __   __| | __ _ _ __ 
+\ \| | | | | |/ _` | '_ \| | | / __| | __/ _ \   / /  / _` | |/ _ \ '_ \ / _` |/ _` | '__|
+_\ \ |_| | | | (_| | |_) | |_| \__ \ | || (_) | / /__| (_| | |  __/ | | | (_| | (_| | |   
+\__/\__, |_|_|\__,_|_.__/ \__,_|___/  \__\___/  \____/\__,_|_|\___|_| |_|\__,_|\__,_|_|   
+    |___/ """)
+    print("Welcome to Syllabus to Calendar!")
+    course_name = input("Enter your Course Name: ")
+    print("\033[1;94mEnter your text including your schedule. Press [Enter] & [Ctrl + D] to submit: \033[0m")
+    full_string = []
+    while True: 
+        try: 
+            line = input()
+        except EOFError: 
+            break
+        full_string.append(line)
+        string = ' '.join([str(line) for line in full_string]) # convert list to string
+    return string, course_name
 
 def find_event(d, string):
     index_range = 16 # custom value
@@ -43,15 +59,16 @@ def find_event(d, string):
 
     for k in keywords:
         close_match = difflib.get_close_matches(k, string_list, n=1, cutoff=0.1)
-    d["event"] = close_match[0] # we can now add the closes matching event to the dictionary
+    d["event"] += close_match[0] # we can now add the closes matching event to the dictionary
 
-def find_dates(string):
+def find_dates(string, course_name):
     sutime = SUTime(mark_time_ranges=True, include_range=True)
     dates = sutime.parse(string)
 
     for d in dates: # loop through detected dates
         if d["type"] == "DATE": 
             d["value"] = datetime.datetime.strptime(d["value"], "%Y-%m-%d").strftime('%m/%d/%y') # change date format for google cal export
+            d["event"] = course_name + " - "
             find_event(d, string) # call find_event function to add event name to the dict 
 
     # alternative library
@@ -74,6 +91,7 @@ def write_calendar_csv(events):
                 calendar_writer.writerow({'Subject': e['event'], 'Start Date': e["value"], 'End Date': e["value"], 'All Day Event': True})
 
     calendar_csv.close()
+    print("\033[1mExport Success! Check out 'calendar.csv' in your current directory.\033[0m")
 
 # sample string
 s = """Quizzes
@@ -110,6 +128,6 @@ Final’s week
 
 ## MAIN LOGIC
 # s = pdf_to_text()
-# s = get_user_input()
-events = find_dates(s)
+s, course_name = get_user_input()
+events = find_dates(s, course_name)
 write_calendar_csv(events)
